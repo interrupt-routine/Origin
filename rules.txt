@@ -1,0 +1,57 @@
+Em
+
+Park
+incrementals of 10 from 250 to 450
+e.g. 250, 260, 270, 280...
+
+Slits (Ex,Em)
+all combinations from 1,1
+ to 3.5,3.5 with 0.5 steps where Ex >= Em 
+e.g. yes 3,1 and 2,2 but no 1,3
+e.g. 1,1	1.5,1		1.5,1.5		2,1	2,1.5	...
+
+Range
+proportionally tighter depending on the slits used.
+from (Park)+(20*0.6*(sqrt(Em+Ex))) to (Park*2)-(20*0.6*(sqrt(Em+Ex)))
+
+Additionally, a few select pairs like 5,3 7,3 7,5 but with a tighter range (bigger slits give much stronger dispersion and are more dangerous for the detector!).
+Factor should be 0.8
+-----
+Ex
+
+Park
+same conditions as above, but from 350 to 700
+
+Slits (Ex,Em)
+Same combinations as above but Ex <= Em
+e.g. yes 1,3 and 2,2 but no 3,1
+
+Range
+starts from a set value, but ends before the park.
+the end is proportionally tighter depending on the slits used.
+from (Park/2)+(20*0.6*(sqrt(Em+Ex))) to (Park*2)-(20*0.8*(sqrt(Em+Ex)))
+
+-----
+For both Em and Ex, integration time has to be 0.1, 0.5 and 1
+-----
+It's better if they are organized in folders according to the slits.
+Since an Em experiment with slits 2,1 is usually followed by an Ex experiment with slits 1,2
+Em and Ex experiments with the same slit values should be in the same folder.
+The integration time is not a parameter that influences the position in the folders.
+These folders should be named according to the slits
+e.g. folder ''2-1'' contains all the Em experiments with slits 2_1 and all Ex experiments with slits 1_2
+the single XML files are named according to some convention similar to the renaming code we agreed on
+e.g. in folder ''1-2'' we will find XML
+Emission_250_1_2_0.1
+Emission_250_1_2_0.5
+Emission_250_1_2_1
+Emission_260_1_2_0.1
+Emission_260_1_2_0.5
+Emission_260_1_2_1
+...
+Excitation_350_2_1_0.1
+Excitation_350_2_1_0.5
+Excitation_350_2_1_1
+Excitation_360_2_1_0.1
+Excitation_360_2_1_0.5
+...

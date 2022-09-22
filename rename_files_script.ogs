@@ -1,0 +1,8 @@
+[Main]
+if (0 == Run.LoadOC(%Y\OriginC\rename_files.c))
+{
+	type "script starting";
+	rename_files;
+} else {
+	type "unable to load OriginC file";
+}
