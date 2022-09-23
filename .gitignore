@@ -1,6 +1,6 @@
 .vscode
-*.opju
-PyOrigin.py
 __pycache__
-*.xml
-xml
+*.opju
+*.opj
+PyOrigin.py
+correction

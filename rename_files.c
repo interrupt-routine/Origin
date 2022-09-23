@@ -164,7 +164,6 @@ static void add_letters (vector <string> names, vector<int> counts)
 			continue;
 
 		char letter = 'a' + count - 1;
-		printf("letter is %c (%d)\n", letter, letter);
 		long_name += "_" + letter;
 		pagebase.SetLongName(long_name, false, true);
 		counts[idx]--;

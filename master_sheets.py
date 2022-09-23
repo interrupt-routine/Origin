@@ -67,7 +67,7 @@ def extract_worksheet(worksheet: PyOrigin.CPyWorksheet) -> ColumnData:
 # grabbing the x range for the y column
 	x_data = worksheet.Columns(0).GetData()
 	column_data.start_x = int(min(x_data))
-	column_data.end_x = int(max(x_data))
+	column_data.end_x   = int(max(x_data))
 
 	return column_data
 
@@ -150,7 +150,7 @@ def create_worksheet(short_name : str, long_name : str) -> PyOrigin.CPyWorksheet
 
 	worksheet = page.Layers(0)
 	worksheet.SetName('Data')
-	# this is so that the labels such as "Units", "Comments", "Long Name" ... etc are visible
+	# they will not appear by default ...
 	worksheet.SetLabelVisible(PyOrigin.LABEL_COMMENTS,  True)
 	worksheet.SetLabelVisible(PyOrigin.LABEL_UNITS,     True)
 	worksheet.SetLabelVisible(PyOrigin.LABEL_LONG_NAME, True)
@@ -159,13 +159,13 @@ def create_worksheet(short_name : str, long_name : str) -> PyOrigin.CPyWorksheet
 
 
 
-def make_master_sheet(id : str, folder_name : str, data : Dict[str, List[ColumnData]]) -> None:
+def make_master_sheet(id : str, prefix : str, data : Dict[str, List[ColumnData]]) -> None:
 	columns = data[id]
 
-	long_name = 'NORM' + '_' + folder_name + '_' + id
+	long_name = 'NORM' + '_' + prefix + '_' + id
 
 # - short names are silently truncated to 12 chars, special chars such as '-', '_' are silently removed
-# - Pages() only works with short names
+# - Pages() only works with short names, because they're unique per project, whereas long names are not
 # --> we have to search for the long name, then get the short name
 
 	for page in PyOrigin.GetRootFolder().PageBases():
@@ -175,7 +175,7 @@ def make_master_sheet(id : str, folder_name : str, data : Dict[str, List[ColumnD
 			sheet = PyOrigin.Pages(short_name).Layers('Data')
 			break
 	else:
-		sheet = create_worksheet(id + folder_name, long_name)
+		sheet = create_worksheet(id + prefix, long_name)
 		short_name = sheet.GetPage().GetName()
 		print("created master sheet in the project's root with short name '%s' and long name '%s'" % (short_name, long_name))
 
@@ -186,8 +186,11 @@ def make_master_sheet(id : str, folder_name : str, data : Dict[str, List[ColumnD
 def main():
 	folder = PyOrigin.ActiveFolder()
 	folder_name = folder.GetName() # folders do not have long names
+	prefix = folder_name.split('_', 1)[0] # TN76_DCM_... -> TN76
 
-	print('\n\ncurrent folder: ' + folder.Path() + '\n\n')
+	print('=' * 80)
+	print('\ncurrent folder:\t' + folder.Path())
+	print('=' * 80)
 
 	if folder_name == PyOrigin.GetRootFolder().GetName():
 		print("You called the script from the project's root, nothing to do.")
@@ -203,11 +206,11 @@ def main():
 
 	print('\n\n')
 
-	make_master_sheet('Em', folder_name, data)
+	make_master_sheet('Em', prefix, data)
 
 	print('\n\n')
 
-	make_master_sheet('Ex', folder_name, data)
+	make_master_sheet('Ex', prefix, data)
 
 
 
