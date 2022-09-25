@@ -76,6 +76,12 @@ from math import sqrt
 import enum
 import os
 
+EM_PARKS = (250, 275) + tuple(park for park in range(300, 450 + 10, 10))
+EX_PARKS = tuple(park for park in range(350, 600 + 10, 10))
+SLITS = ((1, 1), (2, 1), (3, 1), (3, 1.5), (3, 2), (4, 2), (5, 2), (6, 3), (6, 4))
+INTEGRATION_TIMES = (0.1, 0.5, 1.0)
+ROOT_DIR_NAME = 'Presets'
+
 # the type is that of the <Param> elements, NOT of the <Op> elements
 ElementCriteria = namedtuple('ElementCriteria', ['device', 'command', 'type_'])
 
@@ -84,11 +90,16 @@ emission_criteria         = ElementCriteria(device = 'Mono2', type_ = '2', comma
 integration_time_criteria = ElementCriteria(device = None,    type_ = '3', command = '5')
 end_wavelength_criteria   = ElementCriteria(device = None,    type_ = '2', command = '2')
 
+class ExperimentType(enum.Enum):
+    EXCITATION = 'Excitation'
+    EMISSION   = 'Emission'
+
 class AlwaysEqual:
     def __eq__(self, _):
         return True
 
 dummy = AlwaysEqual() # this will act as a wildcard
+
 
 def get_start_ops_params(ops : list[ET.Element], *, device : str, command : str, type_ : str) -> list[ET.Element]:
     type_   = dummy if type_   is None else type_
@@ -102,11 +113,9 @@ def get_start_ops_params(ops : list[ET.Element], *, device : str, command : str,
         if op.get('Device') == device and op.get('Command') == command)
     ]
 
-class ExperimentType(enum.Enum):
-    EXCITATION = 'Excitation'
-    EMISSION   = 'Emission'
 
-class Experiment:
+class ExperimentXML:
+
     def __init__(self, filename : str, exp_type : ExperimentType):
         self.exp_type = exp_type
         self.tree = ET.parse(filename)
@@ -128,11 +137,11 @@ class Experiment:
 
         match self.exp_type:
             case ExperimentType.EXCITATION:
-                self.emission  [0].attrib['Value'] = start_wavelength
-                self.excitation[0].attrib['Value'] = park
-            case ExperimentType.EMISSION:
-                self.emission  [0].attrib['Value'] = park
                 self.excitation[0].attrib['Value'] = start_wavelength
+                self.emission  [0].attrib['Value'] = park
+            case ExperimentType.EMISSION:
+                self.excitation[0].attrib['Value'] = park
+                self.emission  [0].attrib['Value'] = start_wavelength
 
         for elt in self.excitation[1:]:
             elt.attrib['Value'] = ex_slit
@@ -163,39 +172,79 @@ def print_elems(elements : ET.Element | list[ET.Element]):
         print_elem(elements)
 
 
+
+def select_range(exp_type : ExperimentType, park : int, ex_slit, em_slit) -> tuple[int, int]:
+    def round_to_multiple(x, multiple):
+        return round(float(x) / multiple) * multiple
+
+    match exp_type:
+        case ExperimentType.EXCITATION:
+# from (Park / 2) + (20 * S * (sqrt(Em + Ex))) to (Park) - (20 * S *(sqrt(Em + Ex)))
+# If any of the slits are 5 or above, S should be 0.9, otherwise 0.7.
+            S = 0.9 if ex_slit >= 5 or em_slit >= 5 else 0.7
+            start = park / 2 + 20 * S * sqrt(em_slit + ex_slit)
+            end   = park     - 20 * S * sqrt(em_slit + ex_slit)
+        case ExperimentType.EMISSION:
+# from (Park) + (20 * S * (sqrt(Em + Ex))) to (Park * 2) - (20 * S * (sqrt(Em + Ex)))
+# If any of the slits are 5 or above, S should be 0.8, otherwise 0.6.
+            S = 0.8 if ex_slit >= 5 or em_slit >= 5 else 0.6
+            start =     park + 20 * S * sqrt(em_slit + ex_slit)
+            end   = 2 * park - 20 * S * sqrt(em_slit + ex_slit)
+
+    return (round_to_multiple(start, 5), round_to_multiple(end, 5))
+
+
+
+def generate_files(dir_path : str, exp_obj : ExperimentXML, *, em_slit, ex_slit, exp_type : ExperimentType, parks):
+    for integration_time in INTEGRATION_TIMES:
+        for park in parks:
+            filename = f"{exp_type.value}_{park}_{ex_slit}_{em_slit}_{integration_time}.xml"
+            path = f"{dir_path}/{integration_time}/{filename}"
+
+            (start_wavelength, end_wavelength) = select_range(exp_type, park, ex_slit, em_slit)
+            parameters = {
+                'ex_slit' : ex_slit, 'em_slit' : em_slit,
+                'park' : park, 'integration_time' : integration_time,
+                'start_wavelength' : start_wavelength,
+                'end_wavelength' : end_wavelength
+            }
+            xml_string = exp_obj.generate_xml(**parameters)
+
+            with open(path, mode = 'w') as f:
+                f.write(xml_string)
+
+            print(f"{filename} has range {(start_wavelength, end_wavelength)}")
+
+def mkdir(path):
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        pass
+
+
 def main():
-    ex_exp = Experiment('Excitation.xml', ExperimentType.EXCITATION)
-    em_exp = Experiment('Emission.xml',   ExperimentType.EMISSION)
+    EX_EXP = ExperimentXML('Excitation.xml', ExperimentType.EXCITATION)
+    EM_EXP = ExperimentXML('Emission.xml',   ExperimentType.EMISSION)
 
-    parameters = {'ex_slit' : 2.0, 'em_slit' : 3.0, 'park' : 300, 'start_wavelength' : 200, 'end_wavelength' : 600, 'integration_time' : 0.3}
-    string = ex_exp.generate_xml(**parameters)
+    mkdir(ROOT_DIR_NAME)
 
-    with open('output.xml', 'w') as f:
-        f.write(string)
+    for slit in SLITS:
+        em_slit, ex_slit = sorted(slit)
 
+        dir_path = f"{ROOT_DIR_NAME}/{ex_slit}-{em_slit}"
+        mkdir(dir_path)
+        for time in INTEGRATION_TIMES:
+            mkdir(f"{dir_path}/{time}")
+
+        # Emission   : Ex >= Em
+        exp_type = ExperimentType.EMISSION
+        generate_files(dir_path, EM_EXP, em_slit=em_slit, ex_slit=ex_slit, exp_type=exp_type, parks=EM_PARKS)
+
+        # Excitation : Em >= Ex
+        exp_type = ExperimentType.EXCITATION
+        em_slit, ex_slit = (ex_slit, em_slit)
+        generate_files(dir_path, EX_EXP, em_slit=em_slit, ex_slit=ex_slit, exp_type=exp_type, parks=EX_PARKS)
 
 
 if __name__ == '__main__':
 	main()
-# PARK_START = 250
-# PARK_END   = 450
-
-# SLIT_START = 10
-# SLIT_END   = 35
-
-# def round_to_multiple(x, multiple):
-#     return round(float(x) / multiple) * multiple
-
-# folders, count  = 0, 0
-# for ex_slit in range(SLIT_START, SLIT_END + 1, 5):
-#     for em_slit in range(SLIT_START, ex_slit + 1, 5):
-#         folders += 1
-#         for park in range(PARK_START, PARK_END + 1, 10):
-#             range_start = 1.0 * park + 20.0 * 0.6 * sqrt((em_slit + ex_slit) / 10.0)
-#             range_end   = 2.0 * park - 20.0 * 0.6 * sqrt((em_slit + ex_slit) / 10.0)
-#             range_start, range_end = [round_to_multiple(range_start, 5), round_to_multiple(range_end, 5)]
-
-#             count += 1
-#             print(f'ex = {ex_slit / 10}, em = {em_slit / 10}, park = {park}, range = ({range_start}, {range_end})')
-
-# print(folders)

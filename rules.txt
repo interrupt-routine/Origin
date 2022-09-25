@@ -12,7 +12,7 @@ It is possible to regulate the intensity (amount) of light that enters the chamb
 These are physical openings used to regulate the intensity of light we shine on the sample like a fenditure in a medieval wall.
 These fenditures increase the intensity of the light by allowing a broader range to enter the chamber.
 If we want to select and convey in the chamber some light at 300 nm, slits 1,1 will allow for the passage of everything 300+-0.5,
-so everything that is [299.5, 300, 300.5]. Slits 2,2 will increse the range to 300+-1, so what passes is light at [299,299.5,300,300.5,301].
+so everything that is [299.5, 300, 300.5]. Slits 2,2 will increase the range to 300+-1, so what passes is light at [299,299.5,300,300.5,301].
 The light that enters the chamber (if we assume it's constant) is almost twice as in 1,1.
 Slits can reach values up to 15-16, after which they cease to make sense because there is too little control on the wavelength
 (slits of 20 would allow for the passage of everything between 290-310, which is a range too broad to be reliable or accurate).
@@ -42,7 +42,6 @@ In Emission experiments, the two slits follow the rule Ex >= Em
 
 1-1
 2-1
-2-1.
 3-1
 3-1.5
 3-2
@@ -56,9 +55,10 @@ e.g. yes 3,1 but no 1,3
 Range
 It should be after the park, and proportionally tighter depending on the slits used. This is tuned by a "safety factor" S
 
-from (Park)+(20*S*(sqrt(Em+Ex))) to (Park*2)-(20*S*(sqrt(Em+Ex)))
+from (Park) + (20 * S * (sqrt(Em + Ex))) to (Park * 2) - (20 * S * (sqrt(Em + Ex)))
 
-For slits 4 and lower, S is 0.6. For slits higher than 5, the factor should be 0.8
+If any of the slits are 5 or above, S should be 0.8, otherwise 0.6.
+
 -----
 
 
@@ -82,9 +82,9 @@ There is an S factor here as well, but it should be more severe.
 This is because the park is chosen to be in the region of the spectrum where the emitted light is more intense.
 The range must end before the park itself, or we would see the n light from the lamp.
 
-from (Park/2)+(20*S*(sqrt(Em+Ex))) to (Park)-(20*S*(sqrt(Em+Ex)))
+from (Park / 2) + (20 * S * (sqrt(Em + Ex))) to (Park) - (20 * S *(sqrt(Em + Ex)))
+If any of the slits are 5 or above, S should be 0.9, otherwise 0.7.
 
-For slits 4 and lower, S is 0.7. For slits higher than 5, the factor should be 0.9
 -----
 
 Integration time
