@@ -34,7 +34,7 @@ in nanometers. They must be identical within each Experiment.
 
 #        <Op Command="2" Device="Mono1">
 #            <Parameters>
-#                <Param Type="2" Value= PARK />
+#                <Param Type="2" Value=PARK />
 # repeated 3 times:
 #        <Op Command="2" Device="Mono1">
 #            <Parameters>
@@ -44,7 +44,7 @@ in nanometers. They must be identical within each Experiment.
 
 #        <Op Command="2" Device="Mono2">
 #            <Parameters>
-#                <Param Type="2" Value= STARTING_WAVELENGTH />
+#                <Param Type="2" Value=STARTING_WAVELENGTH />
 # repeated 3 times:
 #        <Op Command="2" Device="Mono2">
 #            <Parameters>
@@ -54,9 +54,11 @@ in nanometers. They must be identical within each Experiment.
 
 #        <Op Command="5" Device="SCD1">
 #            <Parameters>
-#                <Param Type="3" Value="0.1" />
+#                <Param Type="3" Value="INTEGRATION_TIME" />
 
 # Range:
+# !!! --> In the experiment file embedded within the Notes,
+# the <Param Type="2"> contains the ENDING wavelength instead of the STARTING
 
 #    <ExpAxis>
 #        <Axis Begin=STARTING_WAVELENGTH End=ENDING_WAVELENGTH>
@@ -71,6 +73,8 @@ in nanometers. They must be identical within each Experiment.
 import xml.etree.ElementTree as ET
 from collections import namedtuple
 from math import sqrt
+import enum
+import os
 
 # the type is that of the <Param> elements, NOT of the <Op> elements
 ElementCriteria = namedtuple('ElementCriteria', ['device', 'command', 'type_'])
@@ -78,7 +82,6 @@ ElementCriteria = namedtuple('ElementCriteria', ['device', 'command', 'type_'])
 excitation_criteria       = ElementCriteria(device = 'Mono1', type_ = '2', command = '2')
 emission_criteria         = ElementCriteria(device = 'Mono2', type_ = '2', command = '2')
 integration_time_criteria = ElementCriteria(device = None,    type_ = '3', command = '5')
-excitation_criteria       = ElementCriteria(device = 'Mono1', type_ = '2', command = '2')
 end_wavelength_criteria   = ElementCriteria(device = None,    type_ = '2', command = '2')
 
 class AlwaysEqual:
@@ -92,63 +95,107 @@ def get_start_ops_params(ops : list[ET.Element], *, device : str, command : str,
     device  = dummy if device  is None else device
     command = dummy if command is None else command
 
-    return  [
+    return [
         next(elt for elt in params if elt.get('Type') == type_)
             for params in
         (op.find('Parameters').findall('Param') for op in ops
         if op.get('Device') == device and op.get('Command') == command)
     ]
 
-def print_elem(elt : ET.Element) -> None:
-    print(f"tag = {elt.tag},  attributes = {elt.attrib}, content = {elt.text}")
+class ExperimentType(enum.Enum):
+    EXCITATION = 'Excitation'
+    EMISSION   = 'Emission'
 
-def print_elems(elements):
-    for elem in elements:
-        print_elem(elem)
+class Experiment:
+    def __init__(self, filename : str, exp_type : ExperimentType):
+        self.exp_type = exp_type
+        self.tree = ET.parse(filename)
+        ET.indent(self.tree, space = '') # makes the file a lot shorter
+        self.axis = self.tree.find('ExpAxis').find('Axis')
+
+        start_ops = self.tree.find('StartOps').findall('Op')
+        axis_ops  = self.axis.find('Operations').findall('Op')
+
+        self.excitation        = get_start_ops_params(start_ops, **excitation_criteria._asdict())
+        self.emission          = get_start_ops_params(start_ops, **emission_criteria._asdict())
+        self.integration_time  = get_start_ops_params(start_ops, **integration_time_criteria._asdict())
+        self.start_wavelength  = get_start_ops_params(axis_ops,  **end_wavelength_criteria._asdict())[0]
+
+    def generate_xml(self, *, ex_slit, em_slit, park, start_wavelength, end_wavelength, integration_time) -> str:
+        args =\
+        [ex_slit, em_slit, park, start_wavelength, end_wavelength, integration_time]
+        [ex_slit, em_slit, park, start_wavelength, end_wavelength, integration_time] = [str(arg) for arg in args]
+
+        match self.exp_type:
+            case ExperimentType.EXCITATION:
+                self.emission  [0].attrib['Value'] = start_wavelength
+                self.excitation[0].attrib['Value'] = park
+            case ExperimentType.EMISSION:
+                self.emission  [0].attrib['Value'] = park
+                self.excitation[0].attrib['Value'] = start_wavelength
+
+        for elt in self.excitation[1:]:
+            elt.attrib['Value'] = ex_slit
+
+        for elt in self.emission[1:]:
+            elt.attrib['Value'] = em_slit
+
+        for elt in self.integration_time:
+            elt.attrib['Value'] = integration_time
+
+        self.axis.attrib['Begin'] = start_wavelength
+        self.axis.attrib['End']   = end_wavelength
+
+        self.start_wavelength.attrib['Value'] = start_wavelength
+
+        xml_string = ET.tostring(self.tree.getroot(), encoding='unicode', xml_declaration=False, short_empty_elements=True)
+        return xml_string.replace('\n', '')
 
 
-tree = ET.parse('Emission.xml')
+def print_elems(elements : ET.Element | list[ET.Element]):
+    def print_elem(elt : ET.Element) -> None:
+        print(f"tag = {elt.tag},  attributes = {elt.attrib}, content = {elt.text}")
 
-axis = tree.find('ExpAxis').find('Axis')
-
-START_OPS = tree.find('StartOps').findall('Op')
-AXIS_OPS  = axis.find('Operations').findall('Op')
-
-
-
-excitation_elts        = get_start_ops_params(START_OPS, **excitation_criteria._asdict())
-emission_elts          = get_start_ops_params(START_OPS, **emission_criteria._asdict())
-integration_time_elts  = get_start_ops_params(START_OPS, **integration_time_criteria._asdict())
-end_wvlgt_elts         = get_start_ops_params(AXIS_OPS,  **end_wavelength_criteria._asdict())
-
-# print_elems(excitation_elts)
-# print_elems(emission_elts)
-# print_elems(integration_time_elts)
-# print_elems(end_wvlgt_elts)
-# print_elem(axis)
+    if type(elements) is list:
+        for elem in elements:
+            print_elem(elem)
+    else:
+        print_elem(elements)
 
 
+def main():
+    ex_exp = Experiment('Excitation.xml', ExperimentType.EXCITATION)
+    em_exp = Experiment('Emission.xml',   ExperimentType.EMISSION)
+
+    parameters = {'ex_slit' : 2.0, 'em_slit' : 3.0, 'park' : 300, 'start_wavelength' : 200, 'end_wavelength' : 600, 'integration_time' : 0.3}
+    string = ex_exp.generate_xml(**parameters)
+
+    with open('output.xml', 'w') as f:
+        f.write(string)
 
 
-PARK_START = 250
-PARK_END   = 450
 
-SLIT_START = 10
-SLIT_END   = 35
+if __name__ == '__main__':
+	main()
+# PARK_START = 250
+# PARK_END   = 450
 
-def round_to_multiple(x, multiple):
-    return round(float(x) / multiple) * multiple
+# SLIT_START = 10
+# SLIT_END   = 35
 
-folders, count  = 0, 0
-for ex_slit in range(SLIT_START, SLIT_END + 1, 5):
-    for em_slit in range(SLIT_START, ex_slit + 1, 5):
-        folders += 1
-        for park in range(PARK_START, PARK_END + 1, 10):
-            range_start = 1.0 * park + 20.0 * 0.6 * sqrt((em_slit + ex_slit) / 10.0)
-            range_end   = 2.0 * park - 20.0 * 0.6 * sqrt((em_slit + ex_slit) / 10.0)
-            range_start, range_end = [round_to_multiple(range_start, 5), round_to_multiple(range_end, 5)]
+# def round_to_multiple(x, multiple):
+#     return round(float(x) / multiple) * multiple
 
-            count += 1
-            print(f'ex = {ex_slit / 10}, em = {em_slit / 10}, park = {park}, range = ({range_start}, {range_end})')
+# folders, count  = 0, 0
+# for ex_slit in range(SLIT_START, SLIT_END + 1, 5):
+#     for em_slit in range(SLIT_START, ex_slit + 1, 5):
+#         folders += 1
+#         for park in range(PARK_START, PARK_END + 1, 10):
+#             range_start = 1.0 * park + 20.0 * 0.6 * sqrt((em_slit + ex_slit) / 10.0)
+#             range_end   = 2.0 * park - 20.0 * 0.6 * sqrt((em_slit + ex_slit) / 10.0)
+#             range_start, range_end = [round_to_multiple(range_start, 5), round_to_multiple(range_end, 5)]
 
-print(folders)
+#             count += 1
+#             print(f'ex = {ex_slit / 10}, em = {em_slit / 10}, park = {park}, range = ({range_start}, {range_end})')
+
+# print(folders)
