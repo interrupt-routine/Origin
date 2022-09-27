@@ -181,8 +181,6 @@ def select_range(exp_type : ExperimentType, park : int, ex_slit, em_slit) -> tup
 
     match exp_type:
         case ExperimentType.EXCITATION:
-# from (Park / 2) + (20 * S * (sqrt(Em + Ex))) to (Park) - (20 * S *(sqrt(Em + Ex)))
-# If any of the slits are 5 or above, S should be 0.9, otherwise 0.7.
             if max_slit >= 10:
                 S = 1.0
             elif max_slit >= 5:
@@ -192,8 +190,6 @@ def select_range(exp_type : ExperimentType, park : int, ex_slit, em_slit) -> tup
             start = park / 2 + 20 * S * sqrt(em_slit + ex_slit)
             end   = park     - 20 * S * sqrt(em_slit + ex_slit)
         case ExperimentType.EMISSION:
-# from (Park) + (20 * S * (sqrt(Em + Ex))) to (Park * 2) - (20 * S * (sqrt(Em + Ex)))
-# If any of the slits are 5 or above, S should be 0.8, otherwise 0.6.
             if max_slit >= 10:
                 S = 1.0
             elif max_slit >= 5:
