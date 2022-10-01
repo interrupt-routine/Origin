@@ -10,25 +10,47 @@ X_UNIT = 'nm'
 Y_UNIT = 'a.u.'
 
 
-class ColumnData:
-	start_x = 0
-	end_x = 0
 
-	def __init__(self, name, long_name, comments, units, data):
-		self.name = name
-		self.long_name = long_name
-		self.comments = comments
-		self.units = units
-		self.data = data
-
-
-
-def collections_count(collection : PyOrigin.CPyOriginCollectionBase):
-	""" Necessary to bypass a PyOrigin bug, GetCount() does not work. """
+def collections_count(collection : PyOrigin.CPyOriginCollectionBase) -> int:
+	"""Patches a PyOrigin bug, GetCount() does not work with Folder.PageBases() """
 	count = 0
 	for _ in collection:
 		count += 1
 	return count
+
+PyOrigin.CPyOriginCollectionBase.GetCount = collections_count
+
+
+
+class ColumnData:
+	def __init__(self, column_object : PyOrigin.CPyColumn):
+		"""
+		Extracts the data from a PyOrigin Column object into a ColumnData instance
+		"""
+		self.long_name = column_object.GetLongName()
+		self.comments =  column_object.GetComments()
+		rows =           column_object.GetData()
+
+		self.offset = next(i for i, x in enumerate(rows) if x != '')
+		self.rows = [x for x in rows if x != '']
+
+		self.start_x = self.end_x = 0
+
+
+
+	def write_column(self, col_object : PyOrigin.CPyColumn) -> None:
+		col_object.SetComments(self.comments)
+		col_object.SetLongName(self.long_name)
+
+		rows = self.rows
+	# it is critical to insert empty strings in the empty cells
+	# because of a bug in the GetData(start, end) function --> it returns a list
+	# filled with None if the (start, end) range contains empty cells
+	# at the beginning
+		if self.start_x > X_START:
+			rows = [''] * (self.start_x - X_START) + rows
+
+		col_object.SetData(rows)
 
 
 
@@ -41,70 +63,72 @@ def normalize(array : List) -> List:
 
 
 
-def extract_column(column_object : PyOrigin.CPyColumn) -> ColumnData:
-	"""
-	Extracts the data from a PyOrigin Column object into a ColumnData instance
-	"""
-	name =      column_object.GetName()
-	long_name = column_object.GetLongName()
-	comments =  column_object.GetComments()
-	data =      column_object.GetData()
-	units =     Y_UNIT
-
-	data = normalize([x for x in data if x != ''])
-
-	return ColumnData(name, long_name, comments, units, data)
-
-
-
 def extract_worksheet(worksheet: PyOrigin.CPyWorksheet) -> ColumnData:
 	"""
 	Extracts the data and metadata from a worksheet.
 	Only the second column (Y) is extracted, together with
 	the corresponding range of X values (first column).
 	"""
-	column_data = extract_column(worksheet.Columns(1))
+	column_data = ColumnData(worksheet.Columns(1))
+	column_data.rows = normalize(column_data.rows)
+
 # grabbing the x range for the y column
 	x_data = worksheet.Columns(0).GetData()
-	column_data.start_x = int(min(x_data))
-	column_data.end_x   = int(max(x_data))
+	column_data.start_x = int(min(x_data)) + column_data.offset
+	column_data.end_x   = int(max(x_data)) + column_data.offset
 
 	return column_data
 
 
 
-def write_column(col_object : PyOrigin.CPyColumn, col_data : ColumnData) -> None:
-	col_object.SetComments(col_data.comments)
-	col_object.SetUnits(   col_data.units)
-	col_object.SetLongName(col_data.long_name)
+def extract_master_sheet(master_sheet : PyOrigin.CPyWorksheet) -> List[ColumnData]:
+	"""
+	Extracts the data and metadata from a master sheet.
+	All Y columns are extracted i.e. not including X, the first column.
+	"""
+	columns = []
 
-	data = col_data.data
-	if col_data.start_x > X_START:
-		data = [''] * (col_data.start_x - X_START) + data
-	col_object.SetData(data)
+	for i in range(1, master_sheet.GetColCount()):
+		column_data = ColumnData(master_sheet.Columns(i))
+		column_data.start_x = X_START + column_data.offset
+		column_data.end_x = column_data.start_x + len(column_data.rows) - 1
+
+		print("column '%s' ( '%s' ) has range (%d, %d) nm" %
+			(master_sheet.Columns(i).GetName(), master_sheet.Columns(i).GetLongName(), column_data.start_x, column_data.end_x)
+		)
+
+		columns.append(column_data)
+
+	return columns
 
 
 
-def write_columns(worksheet : PyOrigin.CPyWorksheet, columns : List[ColumnData]) -> None:
-	cols_count = worksheet.GetColCount()
+def write_to_master_sheet(master_sheet : PyOrigin.CPyWorksheet, columns : List[ColumnData]) -> None:
+	"""
+	Inserts the columns into the master sheet.
+	"""
+	for i in range(0, master_sheet.GetColCount()):
+		master_sheet.DeleteCol(0)
 
-# creating the first (x) column, if it does not already exists
-	if cols_count == 0:
-		worksheet.InsertCol(0, X_NAME)
-		first_column = worksheet.Columns(0)
-		first_column.SetUnits(X_UNIT)
-		first_column.SetLongName(X_NAME)
-		first_column.SetType(PyOrigin.COLTYPE_DESIGN_X)
-		first_column.SetData(list(range(X_START, X_END + 1)))
-		cols_count += 1
+# creating the first (x) column
+	master_sheet.InsertCol(0, X_NAME)
+	x_column = master_sheet.Columns(0)
+	x_column.SetUnits(X_UNIT)
+	x_column.SetLongName(X_NAME)
+	x_column.SetType(PyOrigin.COLTYPE_DESIGN_X)
+	x_column.SetData(list(range(X_START, X_END + 1)))
+
+# sorting the columns by long name:
+	columns.sort(key = lambda col : col.long_name)
 
 # inserting the next (y) columns
-	for column_data in columns:
-		worksheet.InsertCol(cols_count, 'Y' + str(cols_count))
-		column = worksheet.Columns(cols_count)
-		column.SetType(PyOrigin.COLTYPE_DESIGN_Y)
-		write_column(column, column_data)
-		cols_count += 1
+	for i, column_data in enumerate(columns):
+		i += 1 # because the 0th column is the X one
+		master_sheet.InsertCol(i, 'Y' + str(i))
+		y_column = master_sheet.Columns(i)
+		y_column.SetUnits(Y_UNIT)
+		y_column.SetType(PyOrigin.COLTYPE_DESIGN_Y)
+		column_data.write_column(y_column)
 
 
 
@@ -133,7 +157,6 @@ def extract_folder(folder : PyOrigin.CPyFolder) -> Dict[str, List[ColumnData]]:
 		)
 
 		col.long_name = page_longname
-		col.name = page_name
 
 		if 'Ex' in page_name or 'Ex' in page_longname:
 			master_columns['Ex'].append(col)
@@ -168,18 +191,34 @@ def make_master_sheet(id : str, prefix : str, data : Dict[str, List[ColumnData]]
 # - Pages() only works with short names, because they're unique per project, whereas long names are not
 # --> we have to search for the long name, then get the short name
 
-	for page in PyOrigin.GetRootFolder().PageBases():
-		if page.GetLongName() == long_name:
-			short_name = page.GetName()
-			print("found master sheet in the project's root with short name '%s' and long name '%s'" % (short_name, long_name))
-			sheet = PyOrigin.Pages(short_name).Layers('Data')
-			break
+	page = next((
+		page for page in PyOrigin.GetRootFolder().PageBases()
+		if page.GetLongName() == long_name
+	), None)
+
+	if page is not None:
+		short_name = page.GetName()
+		print("found master sheet in the project's root with short name '%s' and long name '%s'" 
+			% (short_name, long_name)
+		)
+		sheet = PyOrigin.Pages(short_name).Layers('Data')
+		master_columns = extract_master_sheet(sheet)
+		long_names = [column.long_name for column in master_columns]
+
+		columns = [column for column in columns if column.long_name not in long_names]
+		if len(columns) == 0:
+			print('All columns already existed in the master sheet, nothing to do.')
+			return
+
+		columns += master_columns
 	else:
 		sheet = create_worksheet(id + prefix, long_name)
 		short_name = sheet.GetPage().GetName()
-		print("created master sheet in the project's root with short name '%s' and long name '%s'" % (short_name, long_name))
+		print("created master sheet in the project's root with short name '%s' and long name '%s'"
+			% (short_name, long_name)
+		)
 
-	write_columns(sheet, columns)
+	write_to_master_sheet(sheet, columns)
 
 
 
@@ -189,13 +228,14 @@ def main():
 	prefix = folder_name.split('_', 1)[0] # TN76_DCM_... -> TN76
 
 	print('=' * 80)
-	print('\ncurrent folder:\t' + folder.Path())
+	print('current folder:\t' + folder.Path())
 	print('=' * 80)
+	print('\n')
 
 	if folder_name == PyOrigin.GetRootFolder().GetName():
 		print("You called the script from the project's root, nothing to do.")
 		return
-	if collections_count(folder.PageBases()) == 0:
+	if folder.PageBases().GetCount() == 0:
 		print('No worksheets found in the folder, nothing to do.')
 		return
 
