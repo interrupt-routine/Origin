@@ -88,9 +88,9 @@ The range must end before the park itself, or we would see the n light from the 
 
 from (Park / 2) + (20 * S * (sqrt(Em + Ex))) to (Park) - (20 * S *(sqrt(Em + Ex)))
 
-The correction curve R is absent in the region below 240.
-This renders the portion below 240 of the spectrum not processable, and also prompts the software to ask for manual confirmation and stop the automation.
-If the range begins at a wavelength below 240, it is set to 240. Otherwise the value above (Park/2) is valid.
+The correction curve R is absent in the region below 240. This means that any Ex data collected below 240 is almost meaningless.
+Additionally, this also prompts the software to ask for manual confirmation and thus stops automation of the acquisition.
+If the range start [(Park / 2) + (20 * S * (sqrt(Em + Ex)))] is lower than 240, it is set to 240. Otherwise no additional action is taken.
 
 If any of the slits are 10 or above, S should be 1
 Else if any of the slits are 5 or above, S should be 0.9.
