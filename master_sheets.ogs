@@ -4,9 +4,3 @@
 // e.g. C:\Users\username\Documents\OriginLab\User Files\
 
 run -pyf "master_sheets.py";
-
-// syntax to pass arguments to Python:
-
-// double var1 = 123.456;
-// string var2$ = 'hello';
-// run -pyf test.py "$(var1)" "%(var2$)";

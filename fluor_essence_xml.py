@@ -73,7 +73,7 @@ in nanometers. They must be identical within each Experiment.
 import xml.etree.ElementTree as ET
 from collections import namedtuple
 from math import sqrt
-import enum
+from enum import Enum
 import os
 
 EM_PARKS = (250, 275) + tuple(park for park in range(300, 550 + 10, 10))
@@ -90,7 +90,7 @@ emission_criteria         = ElementCriteria(device = 'Mono2', type_ = '2', comma
 integration_time_criteria = ElementCriteria(device = None,    type_ = '3', command = '5')
 end_wavelength_criteria   = ElementCriteria(device = None,    type_ = '2', command = '2')
 
-class ExperimentType(enum.Enum):
+class ExperimentType(Enum):
     EXCITATION = 'Excitation'
     EMISSION   = 'Emission'
 
@@ -108,9 +108,9 @@ def get_start_ops_params(ops : list[ET.Element], *, device : str, command : str,
 
     return [
         next(elt for elt in params if elt.get('Type') == type_)
-            for params in
+        for params in
         (op.find('Parameters').findall('Param') for op in ops
-        if op.get('Device') == device and op.get('Command') == command)
+         if op.get('Device') == device and op.get('Command') == command)
     ]
 
 
@@ -189,6 +189,7 @@ def select_range(exp_type : ExperimentType, park : int, ex_slit, em_slit) -> tup
                 S = 0.7
             start = park / 2 + 20 * S * sqrt(em_slit + ex_slit)
             end   = park     - 20 * S * sqrt(em_slit + ex_slit)
+            start = max(start, 240)
         case ExperimentType.EMISSION:
             if max_slit >= 10:
                 S = 1.0

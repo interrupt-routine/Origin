@@ -1,0 +1,14 @@
+[Main]
+
+int wavelength = 400;
+string choices$ = "Emission|Excitation";
+int exp_idx = -1;
+
+getnumber
+(wavelength (nm)) wavelength
+(Experiment type) exp_idx:choices$
+(Enter the wavelength which should be used as maximum and select the experiment type);
+
+string exp_type$ = GetToken(choices$, exp_idx, "|")$;
+
+run -pyf "master_sheets.py" "$(wavelength)" "%(exp_type$)";
