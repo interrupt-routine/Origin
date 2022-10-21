@@ -36,7 +36,7 @@ for the less energetic wavelengths, in the range 300-550 with incrementals of 10
 e.g. 250, 275, 300, 310, 320...
 
 Slits (Ex,Em)
-Only some select combinations that proved to be the most common. 
+Only some select combinations that proved to be the most common.
 The instrument can handle slits from 1 to 14.7, but bugs sometimes arise whenever the decimals are not a multiple of 5.
 In Emission experiments, the two slits follow the rule Ex >= Em
 

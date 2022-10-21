@@ -76,9 +76,14 @@ from math import sqrt
 from enum import Enum
 import os
 
-EM_PARKS = (250, 275) + tuple(park for park in range(300, 550 + 10, 10))
-EX_PARKS = tuple(park for park in range(350, 800 + 10, 10))
-SLITS = ((1, 1), (2, 1), (3, 1), (3, 1.5), (3, 2), (4, 2), (5, 2), (6, 3), (6, 4), (8, 6), (10, 6), (10, 8), (15, 10))
+EM_PARKS = (250, 275) + tuple(park for park in range(300, 550 + 1, 10))
+EX_PARKS = tuple(park for park in range(350, 800 + 1, 10))
+
+SLITS = (
+    (1, 1), (2, 1), (3, 1), (3, 1.5), (3, 2), (4, 2), (5, 2),
+    (6, 3), (6, 4), (8, 6), (10, 6), (10, 8), (14, 10)
+)
+
 INTEGRATION_TIMES = (0.1, 0.5, 1.0)
 ROOT_DIR_NAME = 'Presets'
 
@@ -182,9 +187,9 @@ def select_range(exp_type : ExperimentType, park : int, ex_slit, em_slit) -> tup
     match exp_type:
         case ExperimentType.EXCITATION:
             if max_slit >= 10:
-                S = 1.0
-            elif max_slit >= 5:
                 S = 0.9
+            elif max_slit >= 5:
+                S = 0.8
             else:
                 S = 0.7
             start = park / 2 + 20 * S * sqrt(em_slit + ex_slit)
@@ -192,9 +197,9 @@ def select_range(exp_type : ExperimentType, park : int, ex_slit, em_slit) -> tup
             start = max(start, 240)
         case ExperimentType.EMISSION:
             if max_slit >= 10:
-                S = 1.0
+                S = 0.9
             elif max_slit >= 5:
-                S = 0.8
+                S = 0.7
             else:
                 S = 0.6
             start =     park + 20 * S * sqrt(em_slit + ex_slit)

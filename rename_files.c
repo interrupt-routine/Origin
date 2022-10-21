@@ -230,7 +230,7 @@ void rename_files (void)
 				printf("Error, The worksheet was not renamed.");
 		} catch (int errcode) {
 			print_missing_param(errcode);
-			printf("The workseet was not renamed.");
+			printf("The worksheet was not renamed.");
 		}
 	}
 	add_letters(names, counts);
