@@ -36,7 +36,8 @@ for the less energetic wavelengths, in the range 300-550 with incrementals of 10
 e.g. 250, 275, 300, 310, 320...
 
 Slits (Ex,Em)
-only some select combinations that proved to be the most common.
+Only some select combinations that proved to be the most common. 
+The instrument can handle slits from 1 to 14.7, but bugs sometimes arise whenever the decimals are not a multiple of 5.
 In Emission experiments, the two slits follow the rule Ex >= Em
 
 1-1
@@ -51,7 +52,7 @@ In Emission experiments, the two slits follow the rule Ex >= Em
 8-6
 10-6
 10-8
-15-10
+14-10
 
 e.g. yes 3,1 but no 1,3
 
@@ -60,8 +61,8 @@ It should be after the park, and proportionally tighter depending on the slits u
 
 from (Park) + (20 * S * (sqrt(Em + Ex))) to (Park * 2) - (20 * S * (sqrt(Em + Ex)))
 
-If any of the slits are 10 or above, S should be 1
-Else if any of the slits are 5 or above, S should be 0.8
+If any of the slits are 10 or above, S should be 0.9
+Else if any of the slits are 5 or above, S should be 0.7
 Else 0.6.
 
 -----
@@ -92,8 +93,8 @@ The correction curve R is absent in the region below 240. This means that any Ex
 Additionally, this also prompts the software to ask for manual confirmation and thus stops automation of the acquisition.
 If the range start [(Park / 2) + (20 * S * (sqrt(Em + Ex)))] is lower than 240, it is set to 240. Otherwise no additional action is taken.
 
-If any of the slits are 10 or above, S should be 1
-Else if any of the slits are 5 or above, S should be 0.9.
+If any of the slits are 10 or above, S should be 0.9
+Else if any of the slits are 5 or above, S should be 0.8.
 Else 0.7.
 
 -----
