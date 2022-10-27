@@ -24,6 +24,11 @@ In addition, light of wavelength n undergoes geometric reflections at multiples 
 This means that if we look at whatever light is in the chamber at 500 nm (we park the detector so that only light at 500nm can generate a signal)
 and shine on the sample light at 250 nm, the detector will see a colossal 2n reflection, and thus receive a killer amount of light.
 
+The correction curve R is absent in the region below 240 nm. This means that any Ex data collected below 240 nm is almost meaningless.
+Additionally, this also prompts the software to ask for manual confirmation and thus stops automation of the acquisition.
+If the range start is lower than 240 nm, it is set to 240 nm. Otherwise no additional action is taken.
+The upper limit for the range is 920 nm.
+
 ---
 
 Emission experiments
@@ -88,10 +93,6 @@ This is because the park is chosen to be in the region of the spectrum where the
 The range must end before the park itself, or we would see the n light from the lamp.
 
 from (Park / 2) + (20 * S * (sqrt(Em + Ex))) to (Park) - (20 * S *(sqrt(Em + Ex)))
-
-The correction curve R is absent in the region below 240. This means that any Ex data collected below 240 is almost meaningless.
-Additionally, this also prompts the software to ask for manual confirmation and thus stops automation of the acquisition.
-If the range start [(Park / 2) + (20 * S * (sqrt(Em + Ex)))] is lower than 240, it is set to 240. Otherwise no additional action is taken.
 
 If any of the slits are 10 or above, S should be 0.9
 Else if any of the slits are 5 or above, S should be 0.8.

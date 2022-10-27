@@ -87,6 +87,9 @@ SLITS = (
 INTEGRATION_TIMES = (0.1, 0.5, 1.0)
 ROOT_DIR_NAME = 'Presets'
 
+MIN_WAVELENGTH = 240
+MAX_WAVELENGTH = 920
+
 # the type is that of the <Param> elements, NOT of the <Op> elements
 ElementCriteria = namedtuple('ElementCriteria', ['device', 'command', 'type_'])
 
@@ -194,7 +197,6 @@ def select_range(exp_type : ExperimentType, park : int, ex_slit, em_slit) -> tup
                 S = 0.7
             start = park / 2 + 20 * S * sqrt(em_slit + ex_slit)
             end   = park     - 20 * S * sqrt(em_slit + ex_slit)
-            start = max(start, 240)
         case ExperimentType.EMISSION:
             if max_slit >= 10:
                 S = 0.9
@@ -204,6 +206,9 @@ def select_range(exp_type : ExperimentType, park : int, ex_slit, em_slit) -> tup
                 S = 0.6
             start =     park + 20 * S * sqrt(em_slit + ex_slit)
             end   = 2 * park - 20 * S * sqrt(em_slit + ex_slit)
+
+    start = max(start, MIN_WAVELENGTH)
+    end   = min(end,   MAX_WAVELENGTH)
 
     return (round_to_multiple(start, 5), round_to_multiple(end, 5))
 
@@ -227,7 +232,7 @@ def generate_files(dir_path : str, exp_obj : ExperimentXML, *, em_slit, ex_slit,
             with open(path, mode = 'w') as f:
                 f.write(xml_string)
 
-            print(f"{filename} has range {(start_wavelength, end_wavelength)}")
+            print(f"{filename} has range {(start_wavelength, end_wavelength)} nm")
 
 def mkdir(path):
     try:
