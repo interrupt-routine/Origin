@@ -144,7 +144,7 @@ static bool has_letter (string long_name)
 
 static void add_letters (vector <string> names, vector<int> counts)
 {
-// we do not want to add a 'a' at the end of unique names
+// we do not want to add a '_a' at the end of unique names
 	for (int i = 0; i < names.GetSize(); i++)
 		if (counts[i] == 1)
 			counts[i] = 0;
@@ -199,7 +199,7 @@ void rename_files (void)
 			continue;
 
 		const string cur_long_name = pagebase.GetLongName();
-		printf("\n\nworksheet:\tshort = %s ; long = %s\n",
+		printf("\n\nworksheet:\tshort name = '%s' ; long name = '%s'\n",
 			pagebase.GetName(), cur_long_name
 		);
 
@@ -215,6 +215,7 @@ void rename_files (void)
 		vector<string> columns;
 		if (!worksheet.Columns(0).GetStringArray(columns)) {
 			printf("unable to read the Note\n");
+			continue;
 		}
 		string content = columns[0];
 
