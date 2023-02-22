@@ -143,9 +143,6 @@ def write_to_master_sheet(master_sheet : PyOrigin.CPyWorksheet, columns : List[C
 	x_column.SetType(PyOrigin.COLTYPE_DESIGN_X)
 	x_column.SetData(list(range(X_START, X_END + 1)))
 
-# sorting the columns by long name:
-	columns.sort(key = lambda col : col.long_name)
-
 # inserting the next (y) columns
 	for i, column_data in enumerate(columns, 1):
 		master_sheet.InsertCol(i, 'Y' + str(i))
@@ -221,6 +218,9 @@ def make_master_sheet(exp_type : ExpType, prefix : str, data : Dict[str, List[Co
 	if len(columns) == 0: # we do not create a master sheet if there is no data
 		return
 
+	# sorting the columns by long name (we want to do that *before* appending to the master sheets):
+	columns.sort(key = lambda col : col.long_name)
+
 	long_name = 'NORM' + '_' + prefix + '_' + exp_type.value
 
 # - short names are silently truncated to 12 chars, special chars such as '-', '_' are silently removed
@@ -239,14 +239,16 @@ def make_master_sheet(exp_type : ExpType, prefix : str, data : Dict[str, List[Co
 		)
 		sheet = PyOrigin.Pages(short_name).Layers('Data')
 		master_columns = extract_master_sheet(sheet)
-		long_names = [column.long_name for column in master_columns]
+		# we do not want duplicate columns
+		master_long_names = [column.long_name for column in master_columns]
 
-		columns = [column for column in columns if column.long_name not in long_names]
+		columns = [column for column in columns if column.long_name not in master_long_names]
+
 		if len(columns) == 0:
 			print('All columns already existed in the master sheet, nothing to do.')
 			return
 
-		columns += master_columns
+		columns = master_columns + columns
 	else:
 		sheet = create_worksheet(exp_type.value + prefix, long_name)
 		short_name = sheet.GetPage().GetName()
