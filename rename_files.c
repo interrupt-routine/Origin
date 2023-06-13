@@ -1,4 +1,5 @@
 #include <Origin.h>
+#include <Array.h>
 
 typedef enum EXP_TYPE { EXCITATION, EMISSION } EXP_TYPE;
 
@@ -117,59 +118,54 @@ static string extract_parameters (string folder_name, string exp_string)
 
 
 
-static void add_to_list (string name, vector <string> &names, vector<int> &counts)
+static time_t datestring_to_epoch_time (string datestring)
 {
-	int idx = names.Find(name);
-	if (idx == -1) {
-		names.Add(name);
-		counts.Add(1);
-	} else {
-		counts[idx]++;
+	int day, month, year, hours, minutes;
+// format: "02/02/2023 15:11"
+	sscanf(datestring, "%2d/%2d/%4d %2d:%2d",
+		&day, &month, &year, &hours, &minutes
+	);
+
+	struct tm date = {0};
+	date.tm_year = year - 1900;
+	date.tm_mon = month - 1;
+	date.tm_mday = day;
+	date.tm_hour = hours;
+	date.tm_min = minutes;
+
+	return mktime(&date);
+}
+
+
+
+typedef struct PageStruct {
+	Page page;
+	string name;
+	time_t creation_time;
+} PageStruct;
+
+
+
+static void sort_array (Array<PageStruct&> &array)
+{
+	const int size = array.GetSize();
+	vector <int> creation_times; // .Sort() does not work with 64-bit integers like time_t...
+
+	for (int i = 0; i < size; i++) {
+		PageStruct& ptr = array.GetAt(i);
+		creation_times.Add(ptr.creation_time);
 	}
+
+	vector <uint> indexes;
+	if (!creation_times.Sort(SORT_DESCENDING, true, indexes, SORTCNTRL_STABLE_ALGORITHM))
+		printf("Error: failed to sort array");
+
+	Array<PageStruct&> sorted;
+	for (i = 0; i < size; i++)
+		sorted.Add(array.GetAt(indexes[i]));
+	for (i = 0; i < size; i++)
+		array.SetAt(i, sorted.GetAt(i));
 }
-
-
-
-static bool has_letter (string long_name)
-{
-	int length = strlen(long_name);
-	if (length < 2)
-		return false;
-	char penultimate = long_name[length - 2], last = long_name[length - 1];
-
-	return (penultimate == '_') && (last >= 'a') && (last <= 'z');
-}
-
-
-
-static void add_letters (vector <string> names, vector<int> counts)
-{
-// we do not want to add a '_a' at the end of unique names
-	for (int i = 0; i < names.GetSize(); i++)
-		if (counts[i] == 1)
-			counts[i] = 0;
-
-	foreach (const PageBase pagebase in Project.ActiveFolder().Pages) {
-		string long_name = pagebase.GetLongName();
-		if (has_letter(long_name))
-			continue;
-
-		int idx = names.Find(long_name);
-		if (idx == -1) {
-			printf("error: no files named %s in the names vector\n", long_name);
-			continue;
-		}
-		int count = counts[idx];
-		if (count <= 0)
-			continue;
-
-		char letter = 'a' + count - 1;
-		long_name += "_" + letter;
-		pagebase.SetLongName(long_name, false, true);
-		counts[idx]--;
-	}
-}
-
 
 
 
@@ -186,21 +182,21 @@ void rename_files (void)
 
 	const string folder_name = folder.GetName();
 
-	if (streq(folder_name, Project.RootFolder.GetName())) {
-		printf("The active folder is the root folder, nothing to do.");
-		return;
-	}
-
 	vector <string> names;
-	vector <int> counts;
+	Array<PageStruct&> pagesArray;
 
 	foreach (const PageBase pagebase in folder.Pages) {
 		if (pagebase.GetType() != EXIST_WKS)
 			continue;
 
-		const string cur_long_name = pagebase.GetLongName();
-		printf("\n\nworksheet:\tshort name = '%s' ; long name = '%s'\n",
-			pagebase.GetName(), cur_long_name
+		PropertyInfo info;
+		if (!pagebase.GetPageInfo(info)) {
+			printf("failed to get PageInfo for page %s", pagebase.GetName());
+			continue;
+		}
+
+		printf("\n\nworksheet: created %s\tshort name = '%s' ; long name = '%s'\n",
+			info.szCreate, pagebase.GetName(), pagebase.GetLongName()
 		);
 
 		Page page;
@@ -221,22 +217,46 @@ void rename_files (void)
 
 		try {
 			string new_long_name = extract_parameters(folder_name, content);
-			add_to_list(new_long_name, names, counts);
-
-			if (has_letter(cur_long_name))
-				new_long_name += "_" + (char)str_end_char(cur_long_name);
-
 			printf("new name:\t\"%s\"\n", new_long_name);
-			if (!pagebase.SetLongName(new_long_name, false, true))
-				printf("Error, The worksheet was not renamed.");
+			names.Add(new_long_name);
+
+			PageStruct *page_struct = new PageStruct;
+			page_struct->page = page;
+			page_struct->name = new_long_name;
+			page_struct->creation_time = datestring_to_epoch_time(info.szCreate);
+
+			pagesArray.Add(*page_struct);
+
 		} catch (int errcode) {
 			print_missing_param(errcode);
 			printf("The worksheet was not renamed.");
 		}
 	}
-	add_letters(names, counts);
-}
+	sort_array(pagesArray);
 
+	vector<string> unique_names;
+	vector<uint> counts;
+	count_list(names, unique_names, counts);
+
+	for (int i = 0; i < pagesArray.GetSize(); i++) {
+		PageStruct& page_struct = pagesArray.GetAt(i);
+		string name = page_struct.name;
+		int idx = unique_names.Find(name);
+		if (idx == -1)
+			printf("could not find name %s in the names vector\n", page_struct.name);
+		Page page = page_struct.page;
+		uint count = counts[idx];
+		if (count != 1)
+			name += "-" + (count - 1);
+
+		PropertyInfo info;
+		page.GetPageInfo(info);
+		printf("renaming: created %s, old name = %s, new name = %s\n", info.szCreate, page.GetLongName(), name);
+		if (!page.SetLongName(name, false, true))
+			printf("unable to rename page %s (%s)", page.GetName(), page.GetLongName());
+		counts[idx]--;
+	}
+}
 
 
 
@@ -247,26 +267,16 @@ void rename_files (void)
 static void print_vector (vector <string> strings)
 {
 	int size = strings.GetSize();
-	if (size == 0) {
-		printf("{}\n");
-		return;
-	}
 	printf("{");
-	for (int i = 0; i < size - 1; i++)
-		printf("\"%.30s\", ", strings[i]);
-	printf("\"%.30s\"}\n", strings[size - 1]);
+	for (int i = 0; i < size; i++)
+		printf("\"%.30s\"%s", strings[i], (i == size - 1) ? "" : ", ");
 }
 
 
 static void print_vector (vector <int> numbers)
 {
 	int size = numbers.GetSize();
-	if (size == 0) {
-		printf("{}\n");
-		return;
-	}
 	printf("{");
-	for (int i = 0; i < size - 1; i++)
-		printf("\"%d\", ", numbers[i]);
-	printf("\"%d\"}\n", numbers[size - 1]);
+	for (int i = 0; i < size; i++)
+		printf("\"%d\"%s", numbers[i], (i == size - 1) ? "" : ", ");
 }
