@@ -118,6 +118,32 @@ static string extract_parameters (string folder_name, string exp_string)
 
 
 
+string get_creation_date (string short_name)
+{
+// Page FindPage( LPCSTR lpcszName, int nType = EXIST_WKS, int nAlsoCanbeType = EXIST_MATRIX, BOOL bAlsoCanbeLongName = true )
+// nType : The type of page to look for, use EXIST_WKS, EXIST_MATRIX, etc, or 0 if any type
+// nAlsoCanbeType : The Or condition when searching, must be -1 if nType is 0, and can never be 0
+	Page page = Project.FindPage(short_name, 0, -1, false);
+	if (!page.IsValid())
+		return "PAGE_ERROR";
+	PropertyInfo pageInfo;
+/* typedef struct tagPropertyInfo {
+	char    szSize[MAXLINE];
+	char    szType[MAXLINE];
+	char    szState[MAXLINE];
+	char    szCreate[MAXLINE];
+	char    szModify[MAXLINE];
+	char    szLocation[MAXLINE];
+	char    szContains[MAXLINE];
+}PropertyInfo, *pPropertyInfo; */
+	if (page.GetPageInfo(pageInfo))
+		return pageInfo.szCreate;
+	else
+		return "INFO_ERROR";
+}
+
+
+
 static time_t datestring_to_epoch_time (string datestring)
 {
 	int day, month, year, hours, minutes;
@@ -186,17 +212,14 @@ void rename_files (void)
 	Array<PageStruct&> pagesArray;
 
 	foreach (const PageBase pagebase in folder.Pages) {
-		if (pagebase.GetType() != EXIST_WKS)
+		string name = pagebase.GetName(), long_name = pagebase.GetLongName();
+		if ((pagebase.GetType() != EXIST_WKS) || is_str_match_begin("NORM", long_name) || is_str_match_begin("STACK", long_name))
 			continue;
 
-		PropertyInfo info;
-		if (!pagebase.GetPageInfo(info)) {
-			printf("failed to get PageInfo for page %s", pagebase.GetName());
-			continue;
-		}
+		string creation_date = get_creation_date(name);
 
 		printf("\n\nworksheet: created %s\tshort name = '%s' ; long name = '%s'\n",
-			info.szCreate, pagebase.GetName(), pagebase.GetLongName()
+			creation_date, name, long_name
 		);
 
 		Page page;
@@ -223,7 +246,7 @@ void rename_files (void)
 			PageStruct *page_struct = new PageStruct;
 			page_struct->page = page;
 			page_struct->name = new_long_name;
-			page_struct->creation_time = datestring_to_epoch_time(info.szCreate);
+			page_struct->creation_time = datestring_to_epoch_time(creation_date);
 
 			pagesArray.Add(*page_struct);
 
