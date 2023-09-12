@@ -1,3 +1,6 @@
 [Main]
 
+if (0 != Run.LoadOC(%Y\OriginC\rename_files.c))
+	type "unable to compile the OriginC file";
+
 run -pyf "master_sheets.py" "titration";

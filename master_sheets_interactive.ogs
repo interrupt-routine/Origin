@@ -1,5 +1,8 @@
 [Main]
 
+if (0 != Run.LoadOC(%Y\OriginC\rename_files.c))
+	type "unable to compile the OriginC file";
+
 int wavelength = 400;
 string choices$ = "Emission|Excitation";
 int exp_idx = -1;
