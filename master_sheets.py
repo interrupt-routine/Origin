@@ -6,8 +6,8 @@ import PyOrigin
 
 
 
-X_START = 200
-X_END   = 900
+X_START =  200
+X_END   = 1000
 
 X_NAME = 'Wavelength'
 
