@@ -3,7 +3,8 @@ from enum import Enum
 from typing import Dict, List
 from datetime import datetime
 import PyOrigin
-
+# for type hints:
+from PyOrigin import CPyOriginCollectionBase, CPyColumn, CPyWorksheet, CPyWorksheetPage, CPyPageBase, CPyFolder
 
 
 X_START =  200
@@ -41,7 +42,7 @@ class ExpType(Enum):
 
 
 
-def collections_count(self : PyOrigin.CPyOriginCollectionBase) -> int:
+def collections_count(self : CPyOriginCollectionBase) -> int:
 	"""
 	Patches a PyOrigin bug, GetCount() does not work with Folder.PageBases()
 	"""
@@ -50,11 +51,11 @@ def collections_count(self : PyOrigin.CPyOriginCollectionBase) -> int:
 		count += 1
 	return count
 
-PyOrigin.CPyOriginCollectionBase.GetCount = collections_count
+CPyOriginCollectionBase.GetCount = collections_count
 
 
 
-def is_valid_page(sheet : PyOrigin.CPyPageBaseI):
+def is_valid_page(sheet : CPyPageBase):
 	long_name = sheet.GetLongName()
 	return (sheet.Type is PyOrigin.PGTYPE_WKS) and (not long_name.startswith('NORM')) and (not long_name.startswith('STACK'))
 
@@ -74,7 +75,7 @@ def get_creation_date(page_short_name : str) -> datetime:
 
 
 class Column:
-	def __init__(self, column_object : PyOrigin.CPyColumn, x_start : int):
+	def __init__(self, column_object : CPyColumn, x_start : int):
 		"""
 		Extracts the data from a PyOrigin Column object into a ColumnData instance
 		"""
@@ -87,7 +88,7 @@ class Column:
 		self.x_start = x_start + offset
 		self.x_end = x_start + len(self.rows) - 1
 
-	def write_column(self, col_object : PyOrigin.CPyColumn) -> None:
+	def write_column(self, col_object : CPyColumn) -> None:
 		col_object.SetComments(self.comments)
 		col_object.SetLongName(self.long_name)
 		col_object.SetUnits(Y_UNIT)
@@ -125,7 +126,7 @@ class Column:
 
 
 class WorkSheet:
-	def __init__(self, page : PyOrigin.CPyWorksheetPage) -> None:
+	def __init__(self, page : CPyWorksheetPage) -> None:
 		self.name = page.GetName()
 		self.long_name = page.GetLongName()
 		self.creation_date = get_creation_date(self.name)
@@ -156,7 +157,7 @@ class WorkSheet:
 
 			self.y_columns.append(column)
 
-	def append_to_master_sheet(self, master_sheet : PyOrigin.CPyWorksheet) -> None:
+	def append_to_master_sheet(self, master_sheet : CPyWorksheet) -> None:
 		"""
 		Appends the columns into the master sheet.
 		"""
@@ -185,7 +186,7 @@ class WorkSheet:
 
 
 
-def extract_folder(folder : PyOrigin.CPyFolder) -> Dict[ExpType, List[WorkSheet]]:
+def extract_folder(folder : CPyFolder) -> Dict[ExpType, List[WorkSheet]]:
 	"""
 	Extracts the individual worksheets from a folder.
 	"""
@@ -218,7 +219,7 @@ def extract_folder(folder : PyOrigin.CPyFolder) -> Dict[ExpType, List[WorkSheet]
 
 
 
-def create_worksheet(short_name : str, long_name : str) -> PyOrigin.CPyWorksheet:
+def create_worksheet(short_name : str, long_name : str) -> CPyWorksheet:
 	page = PyOrigin.CreatePage(PyOrigin.PGTYPE_WKS, short_name, "", 1)
 	page.SetLongName(long_name)
 
