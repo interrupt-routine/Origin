@@ -1,0 +1,9 @@
+[Main]
+// %Y expands to the Origin user files directory
+// e.g. C:\Users\username\Documents\OriginLab\User Files\
+
+if (0 == Run.LoadOC(%Y\RenameFilesScript\rename_files.c)) {
+	rename_files;
+} else {
+	type "unable to load OriginC file";
+}
