@@ -2,7 +2,7 @@
 // %Y expands to the Origin user files directory
 // e.g. C:\Users\username\Documents\OriginLab\User Files\
 
-if (0 == Run.LoadOC(%Y\OriginC\rename_files.c)) {
+if (0 == Run.LoadOC(%Y\Scripts\rename_files.c)) {
 	rename_files;
 } else {
 	type "unable to load OriginC file";

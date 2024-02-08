@@ -1,6 +1,6 @@
 [Main]
 
-if (0 != Run.LoadOC(%Y\OriginC\rename_files.c))
+if (0 != Run.LoadOC(%Y\Scripts\rename_files.c))
 	type "unable to compile the OriginC file";
 
 int wavelength = 400;
@@ -14,4 +14,4 @@ getnumber
 
 string exp_type$ = GetToken(choices$, exp_idx, "|")$;
 
-run -pyf "master_sheets.py" "$(wavelength)" "%(exp_type$)";
+run -pyf "Scripts\master_sheets.py" "$(wavelength)" "%(exp_type$)";
