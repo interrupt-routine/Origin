@@ -293,6 +293,7 @@ static void print_vector (vector <string> strings)
 	printf("{");
 	for (int i = 0; i < size; i++)
 		printf("\"%.30s\"%s", strings[i], (i == size - 1) ? "" : ", ");
+	printf("}");
 }
 
 
@@ -302,4 +303,5 @@ static void print_vector (vector <int> numbers)
 	printf("{");
 	for (int i = 0; i < size; i++)
 		printf("\"%d\"%s", numbers[i], (i == size - 1) ? "" : ", ");
+	printf("}");
 }
