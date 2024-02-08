@@ -14,12 +14,13 @@ X_NAME = 'Wavelength'
 
 X_UNIT = 'nm'
 Y_UNIT_NORMALIZED = 'a.u.'
-Y_BASE_UNIT =       'CPS'
+Y_BASE_UNIT       = 'CPS'
 
 NORMAL_LAYER_NAME = 'Data'
 BATCH_LAYER_NAME  = 'Data_S1c'
 
-
+PREFIX_BATCH = 'STACK'
+PREFIX_NORM  = 'NORM'
 
 class Mode(Enum):
 # Default mode: extracts the second column (first Y column) from every
@@ -57,7 +58,7 @@ CPyOriginCollectionBase.GetCount = collections_count
 
 def is_valid_page(sheet : CPyPageBase):
 	long_name = sheet.GetLongName()
-	return (sheet.Type is PyOrigin.PGTYPE_WKS) and (not long_name.startswith('NORM')) and (not long_name.startswith('STACK'))
+	return (sheet.Type is PyOrigin.PGTYPE_WKS) and (not long_name.startswith(PREFIX_NORM)) and (not long_name.startswith(PREFIX_BATCH))
 
 
 
@@ -242,8 +243,8 @@ def make_master_sheet(exp_type : ExpType, prefix : str, data : Dict[ExpType, Lis
 	# sorting the columns by long name (we want to do that *before* appending to the master sheets):
 	worksheets.sort(key = lambda sheet : sheet.creation_date)
 
-	slug = 'STACK' if MODE is Mode.BATCH or MODE is MODE.TITRATION else 'NORM'
-	long_name = slug + '_' + prefix
+	start = PREFIX_BATCH if MODE is Mode.BATCH or MODE is Mode.TITRATION else PREFIX_NORM
+	long_name = start + '_' + prefix
 	if MODE is Mode.AUTOMATIC or MODE is Mode.INTERACTIVE:
 		long_name += '_' + exp_type.value
 
@@ -296,7 +297,7 @@ def main():
 
 	parts = folder_name.split('_')
 	prefix = parts[0] # TN76_DCM_... -> TN76
-	if (MODE is MODE.TITRATION or MODE is Mode.BATCH) and len(parts) >= 2:
+	if (MODE is Mode.TITRATION or MODE is Mode.BATCH) and len(parts) >= 2:
 		prefix += '_' + parts[1] # TN76_DCM_... -> TN76_DCM
 
 
